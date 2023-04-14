@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  background-color: black;
+  @apply text-white;
+}
+
+body {
+  @apply m-0;
+
+  font-family: 'Outfit', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  @apply h-screen;
+  @apply w-screen;
+  @apply grid;
+}
+
+.text-outline {
+  text-shadow: 0 -2px 0 black, 0 2px 0 black, 2px 0 0 black, -2px 0 0 black;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-white/20;
+  @apply rounded-md;
+}
