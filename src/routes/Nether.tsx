@@ -1,6 +1,6 @@
 import { onCleanup, onMount, useContext } from 'solid-js'
 
-import { Layers, WebGLRenderer, PerspectiveCamera, ShaderMaterial, Vector2 } from 'three'
+import { Layers, WebGLRenderer, PerspectiveCamera, ShaderMaterial, Vector2, Vector3 } from 'three'
 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
@@ -12,7 +12,16 @@ import neonBuzzSrc from '../assets/sounds/neon_buzz.mp3'
 
 // import Stats from 'three/examples/jsm/libs/stats.module.js'
 
-import { TubeSceneContext } from '../contexts/TubeScene'
+import { TubeSceneContext, changeGasColor } from '../contexts/TubeScene'
+import { rndBtw } from '../helpers/Math'
+
+
+function randomColor() {
+  const r = rndBtw(0, 1)
+  const g = rndBtw(0, 1 - r)
+  const b = 1 - (r + g)
+  return new Vector3(r, g, b)
+}
 
 export default function Nether() {
   let canvasEl: HTMLCanvasElement
@@ -20,7 +29,9 @@ export default function Nether() {
   const tubeSceneCtx = useContext(TubeSceneContext)!
 
   onMount(() => {
-    const scene = tubeSceneCtx()!
+    const scene = tubeSceneCtx()!.clone(true)
+
+    changeGasColor(scene, randomColor())
 
     const camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
     camera.position.z = 5
@@ -38,9 +49,9 @@ export default function Nether() {
     controls.maxDistance = 10
 
     const params = {
-      bloomStrength: 1,
+      bloomStrength: 0.8,
       bloomThreshold: 0,
-      bloomRadius: 0.4
+      bloomRadius: 0.
     }
 
     const bloomLayer = new Layers()
@@ -109,9 +120,10 @@ export default function Nether() {
     let now
     let then = Date.now()
     let delta
+    let time = 0
     const fps = 60
     const interval = 1000/fps
-    function render() {
+    function render(currentTime: number) {
       rafId = requestAnimationFrame(render)
 
       now = Date.now()
@@ -119,11 +131,21 @@ export default function Nether() {
 
       if (delta <= interval) return
       then = now - (delta % interval)
+      time = currentTime / 1000
 
       controls.update()
       // stats.forEach(s => s.update())
 
-      const rnd = gaussianRandom() * 0.12
+      scene.traverse(obj => {
+        if ('material' in obj) {
+          const mat = (obj.material as ShaderMaterial)
+          if (mat.isShaderMaterial === true && !!mat.uniforms.u_time) {
+            mat.uniforms.u_time.value = time
+          }
+        }
+      })
+
+      const rnd = gaussianRandom() * 0.18
       bloomPass.strength = params.bloomStrength + ((rnd / 2 + lastRnd) / 2)
       lastRnd = (rnd / 2 + lastRnd) / 2
 
@@ -133,7 +155,7 @@ export default function Nether() {
       finalComposer.render()
       // renderer.render(scene, camera)
     }
-    render()
+    render(0)
 
     onCleanup(() => {
       cancelAnimationFrame(rafId)
