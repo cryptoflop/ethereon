@@ -3,7 +3,12 @@ declare module '*.gltf' {
   export default ref
 }
 
-declare module '*.glsl' {
+declare module '*.frag' {
+  const value: string
+  export default value
+}
+
+declare module '*.vert' {
   const value: string
   export default value
 }
