@@ -13,25 +13,25 @@ import neonBuzzSrc from '../assets/sounds/neon_buzz.mp3'
 // import Stats from 'three/examples/jsm/libs/stats.module.js'
 
 import { TubeSceneContext, changeGasColor } from '../contexts/TubeScene'
-import { rndBtw } from '../helpers/Math'
 
-
-function randomColor() {
-  const r = rndBtw(0, 1)
-  const g = rndBtw(0, 1 - r)
-  const b = 1 - (r + g)
-  return new Vector3(r, g, b)
-}
 
 export default function Nether() {
   let canvasEl: HTMLCanvasElement
 
   const tubeSceneCtx = useContext(TubeSceneContext)!
 
+  let changeColor: (col: Vector3) => void
   onMount(() => {
     const scene = tubeSceneCtx()!.clone(true)
 
-    changeGasColor(scene, randomColor())
+    changeColor = (col: Vector3) => {
+      // sub min from all colors and add them to have at least min from the whole spectrum
+      col.x = Math.max(0, col.x - 0.1)
+      col.y = Math.max(0, col.y - 0.1)
+      col.z = Math.max(0, col.z - 0.1)
+      col.add(new Vector3(0.1, 0.1, 0.1))
+      changeGasColor(scene, col)
+    }
 
     const camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
     camera.position.z = 5
@@ -161,6 +161,7 @@ export default function Nether() {
       cancelAnimationFrame(rafId)
       renderer.dispose()
       renderer.getContext().flush()
+      renderer.forceContextLoss()
       Array.from(document.body.children).forEach(e => !e.id && e.remove())
     })
   })
@@ -179,5 +180,7 @@ export default function Nether() {
 
   return <div class='grid'>
     <canvas ref={canvasEl!} class='h-full w-full' />
+    { /* eslint-disable-next-line max-len */ }
+    <input type='color' value='#ffffff' onChange={e => { const v = e.target.value.match(/\w\w/g)!.map(x=>(+`0x${x}`) / 255); changeColor(new Vector3(v[0], v[1], v[2])) }} />
   </div>
 }
