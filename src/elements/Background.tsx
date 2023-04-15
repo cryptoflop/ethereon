@@ -1,4 +1,4 @@
-import Shader from '../blocks/Shader'
+import Shader from './Shader'
 
 import pre from '../assets/images/back.png'
 import pos from '../assets/images/backinv.png'

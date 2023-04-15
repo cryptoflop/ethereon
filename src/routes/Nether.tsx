@@ -1,77 +1,50 @@
-import { onCleanup, onMount } from 'solid-js'
+import { onCleanup, onMount, useContext } from 'solid-js'
 
-import { AmbientLight, EquirectangularReflectionMapping, Layers, Mesh,  MeshBasicMaterial,  MeshPhysicalMaterial, PerspectiveCamera,
-  Scene, ShaderMaterial, Vector2, WebGLRenderer } from 'three'
+import { Layers, WebGLRenderer, PerspectiveCamera, ShaderMaterial, Vector2 } from 'three'
 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader'
 
-import Stats from 'three/examples/jsm/libs/stats.module.js'
+import neonBuzzSrc from '../assets/sounds/neon_buzz.mp3'
 
-const disposables: (() => void)[] = []
-import.meta.hot!.on('vite:beforeUpdate', () => {
-  for (let i = disposables.length; i > 0; i--) {
-    disposables.pop
-  }
-})
+// import Stats from 'three/examples/jsm/libs/stats.module.js'
+
+import { TubeSceneContext } from '../contexts/TubeScene'
 
 export default function Nether() {
   let canvasEl: HTMLCanvasElement
 
+  const tubeSceneCtx = useContext(TubeSceneContext)!
+
   onMount(() => {
-    const scene = new Scene()
-
-    new GLTFLoader().load('/tube.gltf', (gltf) => {
-      const tubeScene = gltf.scene
-      tubeScene.scale.set(0.5, 0.5, 0.5)
-
-      const wire = (gltf.scene.children[1] as Mesh)
-      wire.material = new MeshBasicMaterial({ color: '#8888ff' })
-      wire.layers.enable(BLOOM_SCENE);
-
-      (gltf.scene.children[2] as Mesh).material = new MeshBasicMaterial({ color: '#8888ff' });
-      (gltf.scene.children[2] as Mesh).layers.enable(BLOOM_SCENE);
-      (gltf.scene.children[3] as Mesh).material = new MeshBasicMaterial({ color: '#8888ff' });
-      (gltf.scene.children[3] as Mesh).layers.enable(BLOOM_SCENE)
-
-      new RGBELoader().load('/sky.hdr', (hdr) => {
-        hdr.mapping = EquirectangularReflectionMapping
-
-        const tube = gltf.scene.children[0] as Mesh
-        tube.material = new MeshPhysicalMaterial({
-          roughness: 0.,
-          transmission: 1,
-          thickness: 0.,
-          envMap: hdr,
-          envMapIntensity: 0.8
-        })
-
-        scene.add(tubeScene)
-      })
-    }, undefined, console.error)
+    const scene = tubeSceneCtx()!
 
     const camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
     camera.position.z = 5
 
     const renderer = new WebGLRenderer({ canvas: canvasEl, antialias: true, alpha: true })
     renderer.setSize(canvasEl.clientWidth, canvasEl.clientHeight)
+    renderer.setPixelRatio(window.devicePixelRatio)
+
+    const controls = new OrbitControls( camera, renderer.domElement )
+    controls.target.set( 0, 0, 0 )
+    controls.update()
+    controls.enablePan = false
+    controls.enableDamping = true
+    controls.minDistance = 1
+    controls.maxDistance = 10
 
     const params = {
-      exposure: 4,
-      bloomStrength: 4,
+      bloomStrength: 1,
       bloomThreshold: 0,
       bloomRadius: 0.4
     }
 
-    const ENTIRE_SCENE = 0, BLOOM_SCENE = 1
-
     const bloomLayer = new Layers()
-    bloomLayer.set(BLOOM_SCENE)
+    bloomLayer.set(1)
 
     const renderScene = new RenderPass(scene, camera)
 
@@ -94,7 +67,7 @@ export default function Nether() {
         // eslint-disable-next-line max-len
         vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
         // eslint-disable-next-line max-len
-        fragmentShader: 'uniform sampler2D baseTexture; uniform sampler2D bloomTexture; varying vec2 vUv; void main() { gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4(1.,1.,1.,.0) * texture2D( bloomTexture, vUv ) ); }',
+        fragmentShader: 'uniform sampler2D baseTexture; uniform sampler2D bloomTexture; varying vec2 vUv; void main() { gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4(1.,1.,1.,.0) * texture2D( bloomTexture, vUv ) * 2. ); }',
         defines: {}
       } ), 'baseTexture'
     )
@@ -104,27 +77,11 @@ export default function Nether() {
     finalComposer.addPass(renderScene)
     finalComposer.addPass(finalPass)
 
-    // const light = new DirectionalLight(0xffffff, 1)
-    // light.position.set(0, 5, 10)
-    // scene.add(light)
-
-    scene.add( new AmbientLight( 0x404040 ) )
-
-    const stats = [0].map(n => { const s = new Stats(); s.showPanel(n); return s })
-    stats.forEach((s, i) => {
-      s.dom.style.left = i * 80 + 'px'; s.dom.style.bottom = '80px'; s.dom.style.top = ''
-      document.body.appendChild(s.dom)
-    })
-
-    const controls = new OrbitControls( camera, renderer.domElement )
-    controls.target.set( 0, 0, 0 )
-    controls.update()
-    controls.enablePan = false
-    controls.enableDamping = true
-    controls.minDistance = 1
-    controls.maxDistance = 10
-
-    renderer.setPixelRatio(window.devicePixelRatio)
+    // const stats = [0].map(n => { const s = new Stats(); s.showPanel(n); return s })
+    // stats.forEach((s, i) => {
+    //   s.dom.style.left = i * 80 + 'px'; s.dom.style.bottom = '80px'; s.dom.style.top = ''
+    //   document.body.appendChild(s.dom)
+    // })
 
     window.onresize = () => {
       const width = canvasEl.clientWidth
@@ -139,16 +96,40 @@ export default function Nether() {
       finalComposer.setSize( width, height )
     }
 
+    function gaussianRandom(mean=0, stdev=0.5) {
+      const u = 1 - Math.random() // Converting [0,1) to (0,1]
+      const v = Math.random()
+      const z = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v )
+      // Transform to the desired mean and standard deviation:
+      return z * stdev + mean
+    }
+
     let rafId: number
+    let lastRnd = 0.5
+    let now
+    let then = Date.now()
+    let delta
+    const fps = 60
+    const interval = 1000/fps
     function render() {
       rafId = requestAnimationFrame(render)
 
-      controls.update()
-      stats.forEach(s => s.update())
+      now = Date.now()
+      delta = now - then
 
-      camera.layers.set( BLOOM_SCENE )
+      if (delta <= interval) return
+      then = now - (delta % interval)
+
+      controls.update()
+      // stats.forEach(s => s.update())
+
+      const rnd = gaussianRandom() * 0.12
+      bloomPass.strength = params.bloomStrength + ((rnd / 2 + lastRnd) / 2)
+      lastRnd = (rnd / 2 + lastRnd) / 2
+
+      camera.layers.set(1)
       bloomComposer.render()
-      camera.layers.set( ENTIRE_SCENE )
+      camera.layers.set(0)
       finalComposer.render()
       // renderer.render(scene, camera)
     }
@@ -159,6 +140,18 @@ export default function Nether() {
       renderer.dispose()
       renderer.getContext().flush()
       Array.from(document.body.children).forEach(e => !e.id && e.remove())
+    })
+  })
+
+  onMount(() => {
+    const audio = new Audio(neonBuzzSrc)
+    audio.volume = 0.035
+    audio.playbackRate = 3
+    audio.loop = true
+    // audio.play()
+
+    onCleanup(() => {
+      audio.pause()
     })
   })
 

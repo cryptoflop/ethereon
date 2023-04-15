@@ -1,9 +1,9 @@
-import { Link, useMatch } from 'solid-app-router'
+import { Link, useMatch } from '@solidjs/router'
 import { For } from 'solid-js'
 
 const routes = [
-  { name: 'Blocks', route: 'nether' },
-  { name: 'Inventory', route: 'inventory' },
+  { name: 'Nether', route: 'nether' },
+  { name: 'Lab', route: 'lab' },
   { name: 'Market', route: 'market' }
 ]
 
