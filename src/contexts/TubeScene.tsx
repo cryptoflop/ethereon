@@ -10,14 +10,8 @@ import gasFrag from '../shaders/Gas.frag?raw'
 
 export const TubeSceneContext = createContext<ReturnType<typeof makeTubeSceneContext>>()
 
-export function changeGasColor(scene: Scene, color: Vector3) {
-  const col = new Color(color.x, color.y, color.z);
-  ((scene.getObjectByName('wire') as Mesh).material as MeshBasicMaterial).color = col;
-  ((scene.getObjectByName('cylMid') as Mesh).material as ShaderMaterial).uniforms.baseColor.value = color
-}
-
 function makeTubeSceneContext() {
-  const [tubeScene, setTubeScene] = createSignal<Scene>()
+  const [tubeScene, setTubeScene] = createSignal<(() => { scene: Scene, changeColor: (color: Vector3) => void, gasMat: ShaderMaterial })>()
 
   new GLTFLoader().load('/tube.gltf', (gltf) => {
     const gltfScene = gltf.scene
@@ -131,7 +125,29 @@ function makeTubeSceneContext() {
       const scene = new Scene()
       scene.add(gltfScene)
 
-      setTubeScene(scene)
+      setTubeScene(() => () => {
+        const clonedScene = scene.clone()
+
+        const getObjectsByNames = (names: string[]) => names.
+          map(n => clonedScene.getObjectByName(n)! as Mesh)
+
+        const gasMat = gasMaterial.clone()
+        getObjectsByNames(['cylMid', 'cylLeft', 'cylRight', 'plateML', 'plateMR', 'plateR', 'plateL']).forEach(o =>
+          o.material = gasMat
+        )
+
+        const colMat = colorMat.clone()
+        getObjectsByNames(['wire', 'wirePos', 'wireNeg', 'wireLeft', 'wireRight']).forEach(o =>
+          o.material = colMat
+        )
+
+        const cg = (color: Vector3) => {
+          colMat.color = new Color(color.x, color.y, color.z)
+          gasMat.uniforms.baseColor.value = color
+        }
+
+        return { scene: clonedScene, changeColor: cg, gasMat }
+      })
     })
   }, undefined, console.error)
 

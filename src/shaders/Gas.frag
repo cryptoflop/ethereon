@@ -50,15 +50,15 @@ void main() {
   q.y = fbm( st + vec2(1.0));
 
   vec2 r = vec2(0.);
-  r.x = fbm( st + 1.0*q + vec2(1.7,9.2)+ 0.15*time );
+  r.x = fbm( st + 1.0*q + vec2(1.7,9.2)+ 0.15*time);
   r.y = fbm( st + 1.0*q + vec2(8.3,2.8)+ 0.5*time);
 
   float f = fbm(st+r);
 
-  vec3 base = baseColor;
+  vec3 base = baseColor * 3.;
 
   color = mix(vec3(base),
-              vec3(base),
+              vec3(base) / 4.,
               clamp((f*f)*4.,0.,1.));
 
   color = mix(color,
@@ -66,8 +66,8 @@ void main() {
               clamp(length(q),0.,1.));
 
   color = mix(color,
-              vec3(base) / 2.,
+              vec3(base) / 4.,
               clamp(length(r.x),0.,1.));
 
-  gl_FragColor = vec4((f*f*f+.6*f*f+.5*f)*color, .76);
+  gl_FragColor = vec4((f*f*f+.6*f*f+.5*f)*color, .6);
 }

@@ -1,18 +1,14 @@
 import { onCleanup, onMount, useContext } from 'solid-js'
 
-import { Layers, WebGLRenderer, PerspectiveCamera, ShaderMaterial, Vector2, Vector3 } from 'three'
+import { PerspectiveCamera, Vector3 } from 'three'
 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 
 import neonBuzzSrc from '../assets/sounds/neon_buzz.mp3'
 
-// import Stats from 'three/examples/jsm/libs/stats.module.js'
-
-import { TubeSceneContext, changeGasColor } from '../contexts/TubeScene'
+import { TubeSceneContext } from '../contexts/TubeScene'
+import { shiftColor } from '../helpers/Gas'
+import { createBloomRenderer } from '../functionality/BloomRenderer'
 
 
 export default function Nether() {
@@ -21,149 +17,42 @@ export default function Nether() {
   const tubeSceneCtx = useContext(TubeSceneContext)!
 
   let changeColor: (col: Vector3) => void
+
   onMount(() => {
-    const scene = tubeSceneCtx()!.clone(true)
+    const { scene, changeColor: changeGasColor } = tubeSceneCtx()!()
 
     changeColor = (col: Vector3) => {
-      // sub min from all colors and add them to have at least min from the whole spectrum
-      col.x = Math.max(0, col.x - 0.1)
-      col.y = Math.max(0, col.y - 0.1)
-      col.z = Math.max(0, col.z - 0.1)
-      col.add(new Vector3(0.1, 0.1, 0.1))
-      changeGasColor(scene, col)
+      changeGasColor(shiftColor(col))
     }
 
-    const camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
-    camera.position.z = 5
+    const disposeRenderer = createBloomRenderer(
+      scene,
+      canvasEl,
+      (w, h) => {
+        const cam = new PerspectiveCamera(75, w / h, 0.1, 1000)
+        cam.position.z = 5
+        return cam
+      },
+      (camera, el) => {
+        const controls = new OrbitControls(camera, el)
+        controls.target.set( 0, 0, 0 )
+        controls.update()
+        controls.enablePan = false
+        controls.enableDamping = true
+        controls.minDistance = 1
+        controls.maxDistance = 10
+        return controls
+      },
+      (w, h, cam, controls) => {
+        const camera = cam as PerspectiveCamera
+        camera.aspect = w / h
+        camera.updateProjectionMatrix()
 
-    const renderer = new WebGLRenderer({ canvas: canvasEl, antialias: true, alpha: true })
-    renderer.setSize(canvasEl.clientWidth, canvasEl.clientHeight)
-    renderer.setPixelRatio(window.devicePixelRatio)
-
-    const controls = new OrbitControls( camera, renderer.domElement )
-    controls.target.set( 0, 0, 0 )
-    controls.update()
-    controls.enablePan = false
-    controls.enableDamping = true
-    controls.minDistance = 1
-    controls.maxDistance = 10
-
-    const params = {
-      bloomStrength: 0.8,
-      bloomThreshold: 0,
-      bloomRadius: 0.
-    }
-
-    const bloomLayer = new Layers()
-    bloomLayer.set(1)
-
-    const renderScene = new RenderPass(scene, camera)
-
-    const bloomPass = new UnrealBloomPass(new Vector2(canvasEl.clientWidth, canvasEl.clientHeight), 1.5, 0.4, 0.85)
-    bloomPass.threshold = params.bloomThreshold
-    bloomPass.strength = params.bloomStrength
-    bloomPass.radius = params.bloomRadius
-
-    const bloomComposer = new EffectComposer(renderer)
-    bloomComposer.renderToScreen = false
-    bloomComposer.addPass(renderScene)
-    bloomComposer.addPass(bloomPass)
-
-    const finalPass = new ShaderPass(
-      new ShaderMaterial( {
-        uniforms: {
-          baseTexture: { value: null },
-          bloomTexture: { value: bloomComposer.renderTarget2.texture }
-        },
-        // eslint-disable-next-line max-len
-        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
-        // eslint-disable-next-line max-len
-        fragmentShader: 'uniform sampler2D baseTexture; uniform sampler2D bloomTexture; varying vec2 vUv; void main() { gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4(1.,1.,1.,.0) * texture2D( bloomTexture, vUv ) * 2. ); }',
-        defines: {}
-      } ), 'baseTexture'
+        controls!.update()
+      }
     )
-    finalPass.needsSwap = true
 
-    const finalComposer = new EffectComposer(renderer)
-    finalComposer.addPass(renderScene)
-    finalComposer.addPass(finalPass)
-
-    // const stats = [0].map(n => { const s = new Stats(); s.showPanel(n); return s })
-    // stats.forEach((s, i) => {
-    //   s.dom.style.left = i * 80 + 'px'; s.dom.style.bottom = '80px'; s.dom.style.top = ''
-    //   document.body.appendChild(s.dom)
-    // })
-
-    window.onresize = () => {
-      const width = canvasEl.clientWidth
-      const height = canvasEl.clientHeight
-
-      camera.aspect = width / height
-      camera.updateProjectionMatrix()
-
-      renderer.setSize( width, height )
-
-      bloomComposer.setSize( width, height )
-      finalComposer.setSize( width, height )
-    }
-
-    function gaussianRandom(mean=0, stdev=0.5) {
-      const u = 1 - Math.random() // Converting [0,1) to (0,1]
-      const v = Math.random()
-      const z = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v )
-      // Transform to the desired mean and standard deviation:
-      return z * stdev + mean
-    }
-
-    let rafId: number
-    let lastRnd = 0.5
-    let now
-    let then = Date.now()
-    let delta
-    let time = 0
-    const fps = 60
-    const interval = 1000/fps
-    function render(currentTime: number) {
-      rafId = requestAnimationFrame(render)
-
-      now = Date.now()
-      delta = now - then
-
-      if (delta <= interval) return
-      then = now - (delta % interval)
-      time = currentTime / 1000
-
-      controls.update()
-      // stats.forEach(s => s.update())
-
-      scene.traverse(obj => {
-        if ('material' in obj) {
-          const mat = (obj.material as ShaderMaterial)
-          if (mat.isShaderMaterial === true && !!mat.uniforms.u_time) {
-            mat.uniforms.u_time.value = time
-          }
-        }
-      })
-
-      const rnd = gaussianRandom() * 0.18
-      bloomPass.strength = params.bloomStrength + ((rnd / 2 + lastRnd) / 2)
-      lastRnd = (rnd / 2 + lastRnd) / 2
-
-      camera.layers.set(1)
-      bloomComposer.render()
-      camera.layers.set(0)
-      finalComposer.render()
-      // renderer.render(scene, camera)
-    }
-    render(0)
-
-    onCleanup(() => {
-      cancelAnimationFrame(rafId)
-      renderer.dispose()
-      renderer.getContext().flush()
-      renderer.forceContextLoss()
-      Array.from(document.body.children).forEach(e => !e.id && e.remove())
-    })
+    onCleanup(disposeRenderer)
   })
 
   onMount(() => {
@@ -179,8 +68,8 @@ export default function Nether() {
   })
 
   return <div class='grid'>
-    <canvas ref={canvasEl!} class='h-full w-full' />
+    <canvas ref={canvasEl!} class='absolute' />
     { /* eslint-disable-next-line max-len */ }
-    <input type='color' value='#ffffff' onChange={e => { const v = e.target.value.match(/\w\w/g)!.map(x=>(+`0x${x}`) / 255); changeColor(new Vector3(v[0], v[1], v[2])) }} />
+    <input class='absolute' type='color' value='#ffffff' onChange={e => { const v = e.target.value.match(/\w\w/g)!.map(x=>(+`0x${x}`) / 255); changeColor(new Vector3(v[0], v[1], v[2])) }} />
   </div>
 }

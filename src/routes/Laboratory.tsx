@@ -1,17 +1,11 @@
 import { onCleanup, onMount, useContext } from 'solid-js'
 
-import { Layers, WebGLRenderer, ShaderMaterial, Vector2, Vector3, Mesh, Scene, OrthographicCamera } from 'three'
+import { Vector3, Scene, OrthographicCamera } from 'three'
 
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
-
-import objectUV3DVert from '../shaders/ObjectUV3D.vert?raw'
-import bloomMergeFrag from '../shaders/BloomMerge.frag?raw'
-
-import { TubeSceneContext, changeGasColor } from '../contexts/TubeScene'
+import { TubeSceneContext } from '../contexts/TubeScene'
 import { rndBtw } from '../helpers/Math'
+import { shiftColor } from '../helpers/Gas'
+import { createBloomRenderer } from '../functionality/BloomRenderer'
 
 function randomColor() {
   const r = rndBtw(0, 1)
@@ -26,128 +20,60 @@ export default function Laboratory() {
   const tubeSceneCtx = useContext(TubeSceneContext)!
 
   onMount(() => {
-    const tubeSceneOrg = tubeSceneCtx()!
+    const tubeGenerator = tubeSceneCtx()!
 
     const scene = new Scene()
-    const tubes = [tubeSceneOrg.clone(), tubeSceneOrg.clone(), tubeSceneOrg.clone()]
-    tubes.forEach(s => {
-      changeGasColor(s, randomColor())
+
+    // TODO: get item count from width and height
+    const width = canvasEl.parentElement!.clientWidth, height = canvasEl.parentElement!.clientHeight
+
+    const cols = Math.floor(width / 145)
+    const tubes = Array(30).fill(1)
+      .map(() => tubeGenerator())
+
+    tubes.forEach((g, i) => {
+      const { scene: s, changeColor: cc } = g
+      cc(shiftColor(randomColor()))
       s.rotateZ(Math.PI / 2)
+      s.rotateY(Math.PI / 5)
+      s.rotateX(1)
       s.scale.subScalar(0.5)
+      s.position.setX(5.2 + -(i % cols) * 1.5)
+      s.position.setY(-(Math.floor(i / cols) * 3) + 2.6)
       scene.add(s)
     })
-    tubes[0].position.setX(-5)
-    tubes[2].position.setX(5)
 
-    const camera = new OrthographicCamera(canvasEl.clientWidth / -2, canvasEl.clientWidth / 2, canvasEl.clientHeight / 2, canvasEl.clientHeight / -2, 1, 1000)
-    camera.position.z = 5
-    camera.zoom = 100
-    camera.updateProjectionMatrix()
-
-    const renderer = new WebGLRenderer({ canvas: canvasEl, antialias: true, alpha: true })
-    renderer.setSize(canvasEl.clientWidth, canvasEl.clientHeight)
-    renderer.setPixelRatio(window.devicePixelRatio)
-
-    const params = {
-      bloomStrength: 0.8,
-      bloomThreshold: 0,
-      bloomRadius: 0
-    }
-
-    const bloomLayer = new Layers()
-    bloomLayer.set(1)
-
-    const renderScene = new RenderPass(scene, camera)
-
-    const bloomPass = new UnrealBloomPass(new Vector2(canvasEl.clientWidth, canvasEl.clientHeight), 1.5, 0.4, 0.85)
-    bloomPass.threshold = params.bloomThreshold
-    bloomPass.strength = params.bloomStrength
-    bloomPass.radius = params.bloomRadius
-
-    const bloomComposer = new EffectComposer(renderer)
-    bloomComposer.renderToScreen = false
-    bloomComposer.addPass(renderScene)
-    bloomComposer.addPass(bloomPass)
-
-    const finalPass = new ShaderPass(
-      new ShaderMaterial( {
-        uniforms: {
-          baseTexture: { value: null },
-          bloomTexture: { value: bloomComposer.renderTarget2.texture }
-        },
-        vertexShader: objectUV3DVert,
-        fragmentShader: bloomMergeFrag,
-        defines: {}
-      } ), 'baseTexture'
+    const disposeRenderer = createBloomRenderer(
+      scene,
+      canvasEl,
+      (w, h) => {
+        const camera = new OrthographicCamera(w / -2, w / 2, h / 2, h / -2, 1, 1000)
+        camera.position.z = 5
+        camera.zoom = 100
+        camera.updateProjectionMatrix()
+        return camera
+      },
+      undefined,
+      (w, h, cam) => {
+        const camera = cam as OrthographicCamera
+        camera.left = w / -2
+        camera.right = w / 2
+        camera.top = h / 2
+        camera.bottom = h / -2
+        camera.updateProjectionMatrix()
+      },
+      (time) => {
+        for (const tubeGroup of tubes) {
+          tubeGroup.gasMat.uniforms.u_time.value = time
+          tubeGroup.scene.position.y += (Math.sin(time + tubeGroup.gasMat.uniforms.baseColor.value.x * 2) * 0.0008)
+        }
+      }
     )
-    finalPass.needsSwap = true
 
-    const finalComposer = new EffectComposer(renderer)
-    finalComposer.addPass(renderScene)
-    finalComposer.addPass(finalPass)
-
-    window.onresize = () => {
-      const width = canvasEl.clientWidth
-      const height = canvasEl.clientHeight
-
-      //camera.aspect = width / height
-      camera.updateProjectionMatrix()
-
-      renderer.setSize( width, height )
-
-      bloomComposer.setSize( width, height )
-      finalComposer.setSize( width, height )
-    }
-
-    function gaussianRandom(mean=0, stdev=0.5) {
-      const u = 1 - Math.random() // Converting [0,1) to (0,1]
-      const v = Math.random()
-      const z = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v )
-      // Transform to the desired mean and standard deviation:
-      return z * stdev + mean
-    }
-
-    let rafId: number
-    let lastRnd = 0.5
-    let now
-    let then = Date.now()
-    let delta
-    let time = 0
-    const fps = 60
-    const interval = 1000/fps
-    function render(currentTime: number) {
-      rafId = requestAnimationFrame(render)
-
-      now = Date.now()
-      delta = now - then
-
-      if (delta <= interval) return
-      then = now - (delta % interval)
-      time = currentTime / 1000;
-
-      ((scene.getObjectByName('cylMid') as Mesh).material as ShaderMaterial).uniforms.u_time.value = time
-
-      const rnd = gaussianRandom() * 0.18
-      bloomPass.strength = params.bloomStrength + ((rnd / 2 + lastRnd) / 2)
-      lastRnd = (rnd / 2 + lastRnd) / 2
-
-      camera.layers.set(1)
-      bloomComposer.render()
-      camera.layers.set(0)
-      finalComposer.render()
-      // renderer.render(scene, camera)
-    }
-    render(0)
-
-    onCleanup(() => {
-      cancelAnimationFrame(rafId)
-      renderer.dispose()
-      renderer.getContext().flush()
-      renderer.forceContextLoss()
-    })
+    onCleanup(disposeRenderer)
   })
 
   return <div class='grid'>
-    <canvas ref={canvasEl!} class='h-full w-full' />
+    <canvas ref={canvasEl!} class='absolute' />
   </div>
 }
