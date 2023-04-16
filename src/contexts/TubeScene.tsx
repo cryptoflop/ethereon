@@ -5,7 +5,7 @@ import { Mesh, MeshBasicMaterial, CylinderGeometry, EquirectangularReflectionMap
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader'
 
-import viewport3DVert from '../shaders/Viewport3D.vert?raw'
+import objectUV3DVert from '../shaders/ObjectUV3D.vert?raw'
 import gasFrag from '../shaders/Gas.frag?raw'
 
 export const TubeSceneContext = createContext<ReturnType<typeof makeTubeSceneContext>>()
@@ -61,7 +61,7 @@ function makeTubeSceneContext() {
 
     const gasMaterial = new ShaderMaterial( {
       uniforms,
-      vertexShader: viewport3DVert,
+      vertexShader: objectUV3DVert,
       fragmentShader: gasFrag,
       transparent: true,
       blending: AdditiveBlending // It looks like real blast with Additive blending!!!

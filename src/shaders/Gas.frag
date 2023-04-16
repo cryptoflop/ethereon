@@ -62,11 +62,11 @@ void main() {
               clamp((f*f)*4.,0.,1.));
 
   color = mix(color,
-              vec3(base) / 4.,
+              vec3(base) / 2.,
               clamp(length(q),0.,1.));
 
   color = mix(color,
-              vec3(base) / 4.,
+              vec3(base) / 2.,
               clamp(length(r.x),0.,1.));
 
   gl_FragColor = vec4((f*f*f+.6*f*f+.5*f)*color, .76);

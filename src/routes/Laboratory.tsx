@@ -1,14 +1,13 @@
 import { onCleanup, onMount, useContext } from 'solid-js'
 
-import { Layers, WebGLRenderer, PerspectiveCamera, ShaderMaterial, Vector2, Vector3, Mesh, Scene } from 'three'
+import { Layers, WebGLRenderer, ShaderMaterial, Vector2, Vector3, Mesh, Scene, OrthographicCamera } from 'three'
 
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 
-import viewport3DVert from '../shaders/Viewport3D.vert?raw'
+import objectUV3DVert from '../shaders/ObjectUV3D.vert?raw'
 import bloomMergeFrag from '../shaders/BloomMerge.frag?raw'
 
 import { TubeSceneContext, changeGasColor } from '../contexts/TubeScene'
@@ -40,8 +39,10 @@ export default function Laboratory() {
     tubes[0].position.setX(-5)
     tubes[2].position.setX(5)
 
-    const camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+    const camera = new OrthographicCamera(canvasEl.clientWidth / -2, canvasEl.clientWidth / 2, canvasEl.clientHeight / 2, canvasEl.clientHeight / -2, 1, 1000)
     camera.position.z = 5
+    camera.zoom = 100
+    camera.updateProjectionMatrix()
 
     const renderer = new WebGLRenderer({ canvas: canvasEl, antialias: true, alpha: true })
     renderer.setSize(canvasEl.clientWidth, canvasEl.clientHeight)
@@ -74,7 +75,7 @@ export default function Laboratory() {
           baseTexture: { value: null },
           bloomTexture: { value: bloomComposer.renderTarget2.texture }
         },
-        vertexShader: viewport3DVert,
+        vertexShader: objectUV3DVert,
         fragmentShader: bloomMergeFrag,
         defines: {}
       } ), 'baseTexture'
@@ -89,7 +90,7 @@ export default function Laboratory() {
       const width = canvasEl.clientWidth
       const height = canvasEl.clientHeight
 
-      camera.aspect = width / height
+      //camera.aspect = width / height
       camera.updateProjectionMatrix()
 
       renderer.setSize( width, height )

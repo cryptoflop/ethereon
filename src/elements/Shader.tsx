@@ -1,5 +1,7 @@
 import { JSX, onCleanup, onMount, splitProps } from 'solid-js'
 
+import texToVert from '../shaders/TexToVert.vert?raw'
+
 export default function Shader(props: JSX.CanvasHTMLAttributes<HTMLCanvasElement> & { frag: string, images?: string[], fps?: number }) {
   const [shaderProps, canvasProps] = splitProps(props, ['frag', 'images', 'fps'])
 
@@ -8,17 +10,7 @@ export default function Shader(props: JSX.CanvasHTMLAttributes<HTMLCanvasElement
   onMount(() => {
     const gl = canvas.getContext('webgl2')!
 
-    const vert = `
-      attribute vec2 aVertexPosition;
-      attribute vec2 aTexturePosition;
-      
-      varying vec2 fragCoord;
-      
-      void main() {
-        fragCoord = aTexturePosition;
-        gl_Position = vec4(aVertexPosition, 0.0, 1.0);
-      }
-    `
+    const vert = texToVert
     const vertexShader = gl.createShader(gl.VERTEX_SHADER)!
     const vertShaderSrc = vert
     gl.shaderSource(vertexShader, vertShaderSrc)
