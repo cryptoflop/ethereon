@@ -69,5 +69,5 @@ void main() {
               vec3(base) / 4.,
               clamp(length(r.x),0.,1.));
 
-  gl_FragColor = vec4((f*f*f+.6*f*f+.5*f)*color, .72);
+  gl_FragColor = vec4((f*f*f+.6*f*f+.5*f)*color, .76);
 }

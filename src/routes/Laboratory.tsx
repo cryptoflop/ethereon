@@ -1,6 +1,6 @@
 import { onCleanup, onMount, useContext } from 'solid-js'
 
-import { Layers, WebGLRenderer, PerspectiveCamera, ShaderMaterial, Vector2, Vector3, Mesh } from 'three'
+import { Layers, WebGLRenderer, PerspectiveCamera, ShaderMaterial, Vector2, Vector3, Mesh, Scene } from 'three'
 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
@@ -27,9 +27,18 @@ export default function Laboratory() {
   const tubeSceneCtx = useContext(TubeSceneContext)!
 
   onMount(() => {
-    const scene = tubeSceneCtx()!.clone(true)
+    const tubeSceneOrg = tubeSceneCtx()!
 
-    changeGasColor(scene, randomColor())
+    const scene = new Scene()
+    const tubes = [tubeSceneOrg.clone(), tubeSceneOrg.clone(), tubeSceneOrg.clone()]
+    tubes.forEach(s => {
+      changeGasColor(s, randomColor())
+      s.rotateZ(Math.PI / 2)
+      s.scale.subScalar(0.5)
+      scene.add(s)
+    })
+    tubes[0].position.setX(-5)
+    tubes[2].position.setX(5)
 
     const camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
     camera.position.z = 5
@@ -37,14 +46,6 @@ export default function Laboratory() {
     const renderer = new WebGLRenderer({ canvas: canvasEl, antialias: true, alpha: true })
     renderer.setSize(canvasEl.clientWidth, canvasEl.clientHeight)
     renderer.setPixelRatio(window.devicePixelRatio)
-
-    const controls = new OrbitControls( camera, renderer.domElement )
-    controls.target.set( 0, 0, 0 )
-    controls.update()
-    controls.enablePan = false
-    controls.enableDamping = true
-    controls.minDistance = 1
-    controls.maxDistance = 10
 
     const params = {
       bloomStrength: 0.8,
@@ -121,9 +122,7 @@ export default function Laboratory() {
 
       if (delta <= interval) return
       then = now - (delta % interval)
-      time = currentTime / 1000
-
-      controls.update();
+      time = currentTime / 1000;
 
       ((scene.getObjectByName('cylMid') as Mesh).material as ShaderMaterial).uniforms.u_time.value = time
 
