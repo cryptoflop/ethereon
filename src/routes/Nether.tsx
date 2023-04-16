@@ -19,7 +19,7 @@ export default function Nether() {
   let changeColor: (col: Vector3) => void
 
   onMount(() => {
-    const { scene, changeColor: changeGasColor } = tubeSceneCtx()!()
+    const { scene, changeColor: changeGasColor, gasMat } = tubeSceneCtx()!()
 
     changeColor = (col: Vector3) => {
       changeGasColor(shiftColor(col))
@@ -49,6 +49,14 @@ export default function Nether() {
         camera.updateProjectionMatrix()
 
         controls!.update()
+      },
+      (time) => {
+        scene
+        gasMat.uniforms.u_time.value = time
+
+        // scene.rotation.x += rot
+        // scene.rotation.y += rot
+        // scene.rotation.z += rot
       }
     )
 

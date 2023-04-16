@@ -4,5 +4,5 @@ uniform sampler2D bloomTexture;
 varying vec2 vUv;
 
 void main() {
-  gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4(1.,1.,1.,.0) * texture2D( bloomTexture, vUv ) * 2. );
+  gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4(1.,1.,1.,.0) * texture2D( bloomTexture, vUv ) * 2.2 );
 }

@@ -5,6 +5,7 @@
 html {
   background-color: black;
   @apply text-white;
+  overflow: hidden;
 }
 
 body {
@@ -32,5 +33,13 @@ body {
 
 ::-webkit-scrollbar-thumb {
   @apply bg-white/20;
-  @apply rounded-md;
+}
+
+.tooltip {
+  position: absolute;
+  @apply text-white;
+  @apply bg-black;
+  @apply px-1.5;
+  @apply pointer-events-none;
+  @apply border;
 }

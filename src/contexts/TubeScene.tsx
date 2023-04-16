@@ -36,7 +36,7 @@ function makeTubeSceneContext() {
     left.rotation.x = Math.PI / 2
     left.rotation.z = Math.PI / 2
     left.position.x = -3.38
-    left.scale.set(.14, 3.2, .14)
+    left.scale.set(.11, 3.2, .11)
     left.layers.enable(1)
     left.material = colorMat
     left.name = 'wireLeft'
@@ -84,7 +84,7 @@ function makeTubeSceneContext() {
 
 
     const plate = new Mesh(new CylinderGeometry(0.4, 0.4, 0.028, 40, 1, false), gasMaterial)
-    plate.position.set(-1.582, 0, 0)
+    plate.position.set(-1.586, 0, 0)
     plate.rotation.x = Math.PI / 2
     plate.rotation.z = Math.PI / 2
     plate.material.side = DoubleSide
@@ -97,7 +97,7 @@ function makeTubeSceneContext() {
     gltfScene.add(plateMR)
 
     const plateR = plate.clone()
-    plateR.position.set(5.878, 0, 0)
+    plateR.position.set(5.875, 0, 0)
     plateR.name = 'plateR'
     gltfScene.add(plateR)
 

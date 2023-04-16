@@ -1,26 +1,24 @@
-import { onCleanup, onMount, useContext } from 'solid-js'
+import { For, onCleanup, onMount, useContext } from 'solid-js'
 
-import { Vector3, Scene, OrthographicCamera } from 'three'
+import { Scene, OrthographicCamera } from 'three'
 
 import { TubeSceneContext } from '../contexts/TubeScene'
-import { rndBtw } from '../helpers/Math'
-import { shiftColor } from '../helpers/Gas'
+import { gatherGas, shiftColor } from '../helpers/Gas'
 import { createBloomRenderer } from '../functionality/BloomRenderer'
 
-function randomColor() {
-  const r = rndBtw(0, 1)
-  const g = rndBtw(0, 1 - r)
-  const b = 1 - (r + g)
-  return new Vector3(r, g, b)
-}
+import tooltip from '../directives/tooltip'
+false && tooltip
 
 export default function Laboratory() {
   let canvasEl: HTMLCanvasElement
 
   const tubeSceneCtx = useContext(TubeSceneContext)!
 
+  const tubeGenerator = tubeSceneCtx()!
+  const tubes = Array(24).fill(1)
+    .map(() => ({...tubeGenerator(), gas: gatherGas() }))
+
   onMount(() => {
-    const tubeGenerator = tubeSceneCtx()!
 
     const scene = new Scene()
 
@@ -28,12 +26,10 @@ export default function Laboratory() {
     const width = canvasEl.parentElement!.clientWidth, height = canvasEl.parentElement!.clientHeight
 
     const cols = Math.floor(width / 145)
-    const tubes = Array(30).fill(1)
-      .map(() => tubeGenerator())
 
     tubes.forEach((g, i) => {
-      const { scene: s, changeColor: cc } = g
-      cc(shiftColor(randomColor()))
+      const { scene: s, changeColor, gas } = g
+      changeColor(shiftColor(gas.color))
       s.rotateZ(Math.PI / 2)
       s.rotateY(Math.PI / 5)
       s.rotateX(1)
@@ -73,7 +69,34 @@ export default function Laboratory() {
     onCleanup(disposeRenderer)
   })
 
+  const chemicalDescription = (gas: ReturnType<typeof gatherGas>) => {
+    const desc = Array(gas.weights.length).fill(1)
+      .map((_, i) => ({
+        initials: gas.names[i].slice(0, 2),
+        name: gas.names[i].toLowerCase().charAt(0)
+          .toUpperCase() + gas.names[i].toLowerCase().substring(1),
+        percentage: gas.weights[i].toFixed(2)
+          .replace('0.', '')
+          .replace(/^0+(?!$)/, '')
+          .replace('.', '')
+      }))
+    return <p>
+      <For each={desc}>
+        {d => <span class='hover:bg-white/20 cursor-pointer' use:tooltip={`${d.percentage} units of ${d.name}`}>
+          {d.initials}<sup>{d.percentage}</sup>
+        </span>}
+      </For>
+    </p>
+  }
+
   return <div class='grid'>
-    <canvas ref={canvasEl!} class='absolute' />
+    <canvas ref={canvasEl!} class='absolute z-[-1]' />
+    <div class='grid grid-cols-8 grid-rows-3'>
+      <For each={tubes}>
+        {t => <div class='mx-auto mt-16'>
+          {chemicalDescription(t.gas)}
+        </div>}
+      </For>
+    </div>
   </div>
 }

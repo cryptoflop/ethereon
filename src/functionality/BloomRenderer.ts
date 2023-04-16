@@ -34,7 +34,7 @@ export function createBloomRenderer(
   const controls = setupControls?.(camera, renderer.domElement)
 
   const params = {
-    bloomStrength: 0.8,
+    bloomStrength: 0.6,
     bloomThreshold: 0,
     bloomRadius: 0
   }
@@ -99,15 +99,6 @@ export function createBloomRenderer(
     // stats.forEach(s => s.update())
 
     controls?.update()
-
-    scene.traverse(obj => {
-      if ('material' in obj) {
-        const mat = (obj.material as ShaderMaterial)
-        if (mat.isShaderMaterial === true && !!mat.uniforms.u_time) {
-          mat.uniforms.u_time.value = time
-        }
-      }
-    })
 
     fxaaPass.material.uniforms.resolution.value = new Vector2(1 / (width * renderer.getPixelRatio()), height * renderer.getPixelRatio())
 
