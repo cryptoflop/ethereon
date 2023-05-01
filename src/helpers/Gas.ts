@@ -21,7 +21,7 @@ const GAS_NAMES = [
   'XENON',
   'ETHEREON'
 ]
-const GAS_COLORS = [
+export const GAS_COLORS = [
   new Vector3(0.7, 0.1, 0.2),
   new Vector3(0.9, 0.0, 0.1),
   new Vector3(0.5, 0.0, 0.5),
